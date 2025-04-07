@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>インターネット六法 - 略称編集</title>
+  <style>
+    body { font-family: sans-serif; padding: 10px; width: 320px; }
+    h1 { font-size: 1.1em; margin-bottom: 0.5em; }
+    label, select, input, button { font-size: 0.9em; }
+    .field { margin-bottom: 10px; }
+    .alias-entry { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .alias-entry span { flex: 1; }
+    .alias-entry button { font-size: 0.7em; }
+  </style>
+</head>
+<body>
+  <h1>略称編集</h1>
+  <div class="field">
+    <label for="lawSelector">法令を選択：</label><br>
+    <select id="lawSelector"></select>
+  </div>
+  <div class="field">
+    <label for="newAlias">追加する略称：</label><br>
+    <input type="text" id="newAlias" placeholder="例：下請法">
+    <button id="addAliasBtn">追加</button>
+  </div>
+  <div class="field">
+    <strong>現在の略称：</strong>
+    <div id="aliasList"></div>
+  </div>
+  <button id="downloadMerged">統合lawlist.jsonをダウンロード</button>
+  <script src="alias_editor.js"></script>
+</body>
+</html>
