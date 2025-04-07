@@ -1,8 +1,19 @@
+
 let lawMap = {};
+let aliasMap = {};
+
 fetch(chrome.runtime.getURL("lawlist.json"))
   .then(res => res.json())
   .then(list => {
-    lawMap = Object.fromEntries(list.map(l => [l.lawName, { num: l.lawNum, id: l.lawId }]));
+    lawMap = Object.fromEntries(list.map(l => [l.lawName, { num: l.lawNum, id: l.lawId, aliases: l.aliases || [] }]));
+    aliasMap = {};
+    for (const l of list) {
+      if (l.aliases) {
+        for (const alias of l.aliases) {
+          aliasMap[alias] = l.lawName;
+        }
+      }
+    }
     walkAndWrapMatches(document.body);
     attachPopupEvents();
   });
@@ -24,8 +35,13 @@ function walkAndWrapMatches(root) {
     let lastIndex = 0;
     for (const match of matches) {
       let [full, rawLaw, rawNum] = match;
-      let cleanLaw = rawLaw.replace(/^[がにとでやはもへを]+/, "").replace(/[（(「『〈【《].*$/, "");
-      const lawKey = Object.keys(lawMap).find(key => cleanLaw.startsWith(key));
+      let cleanLaw = rawLaw.replace(/[（(「『〈【《].*$/, "");
+
+      let lawKey = Object.keys(lawMap).find(key => cleanLaw.startsWith(key));
+      if (!lawKey) {
+        const aliasKey = Object.keys(aliasMap).find(a => cleanLaw.startsWith(a));
+        if (aliasKey) lawKey = aliasMap[aliasKey];
+      }
       if (!lawKey) continue;
 
       const lawRef = lawMap[lawKey];
@@ -64,19 +80,13 @@ function attachPopupEvents() {
 
       if (!lawId || isNaN(parseInt(num))) return;
 
-      const url = `https://elaws.e-gov.go.jp/api/1/articles?lawId=${lawId}&article=${encodeURIComponent(article)}`;
+      const url = `https://elaws.e-gov.go.jp/api/1/lawdata/${lawId}`;
       console.log("📄 API Request:", url);
       let sentences = "";
       try {
         const res = await fetch(url);
         if (res.ok) {
           const xml = await res.text();
-          const doc = new DOMParser().parseFromString(xml, "text/xml");
-          sentences = [...doc.querySelectorAll("ParagraphSentence")].map(e => e.textContent.trim()).join("\n");
-        } else {
-          const fallbackUrl = `https://elaws.e-gov.go.jp/api/1/lawdata/${lawId}`;
-          const fallbackRes = await fetch(fallbackUrl);
-          const xml = await fallbackRes.text();
           const doc = new DOMParser().parseFromString(xml, "text/xml");
           const articleNode = [...doc.querySelectorAll("Article")].find(a => a.getAttribute("Num") === article);
           if (articleNode) {
@@ -91,9 +101,10 @@ function attachPopupEvents() {
 
       const popup = document.createElement("div");
       popup.className = "popup";
-      popup.innerHTML = "<strong>" + law + "第" + num + "条</strong><br><pre>" + (sentences || "（本文なし）") + "</pre>" + `<br><a href="https://laws.e-gov.go.jp/document?lawid=${lawId}" target="_blank">📄 e-Govで全文を見る</a>`;
-      popup.innerHTML += '<div class="version-tag">インターネット六法 v13.4.6</div>';
-      popup.innerHTML += '<div class="popup-close">× 閉じる</div>';
+      popup.innerHTML = "<strong>" + law + "第" + num + "条</strong><br><pre>" + (sentences || "（本文なし）") + "</pre>" +
+                        `<br><a href="https://laws.e-gov.go.jp/document?lawid=${lawId}" target="_blank">📄 e-Govで全文を見る</a>` +
+                        '<div class="version-tag">インターネット六法 v14</div>' +
+                        '<div class="popup-close">× 閉じる</div>';
       document.body.appendChild(popup);
 
       requestAnimationFrame(() => {
